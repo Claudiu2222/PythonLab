@@ -1,3 +1,5 @@
+import copy
+
 ### EX 1 ###
 
 
@@ -6,7 +8,7 @@ class Stack:
         self.items = []
 
     def push(self, item_to_push):
-        self.items.append(item_to_push)
+        self.items.append(copy.deepcopy(item_to_push))
 
     def pop(self):
         if self.is_empty():
@@ -16,7 +18,7 @@ class Stack:
     def peek(self):
         if self.is_empty():
             return None
-        return self.items[-1]
+        return copy.deepcopy(self.items[-1])
 
     def is_empty(self):
         return len(self.items) == 0
@@ -24,9 +26,9 @@ class Stack:
 
 def test_stack():
     stack = Stack()
-    stack.push(3)
+    stack.push([3,5,2])
     stack.push(4)
-    print(stack.peek())  # 4
+    print(stack.peek())  # 3,5,2
     print(stack.pop())  # 4
     print(stack.pop())  # 3
     print(stack.pop())  # None
@@ -43,7 +45,7 @@ class Queue:
         self.items = []
 
     def push(self, item_to_push):
-        self.items.append(item_to_push)
+        self.items.append(copy.deepcopy(item_to_push))
 
     def pop(self):
         if self.is_empty():
@@ -53,7 +55,7 @@ class Queue:
     def peek(self):
         if self.is_empty():
             return None
-        return self.items[0]
+        return copy.deepcopy(self.items[0])
 
     def is_empty(self):
         return len(self.items) == 0
