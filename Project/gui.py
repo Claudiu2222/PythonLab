@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
-
+from httprequests import ApiRequester
 class GuiApiClient(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -94,7 +94,14 @@ class RequestTab(ttk.Frame):
 
     def send_request(self):
         url = self.url_entry.get()
-        print("Sending request...")
+        method = self.current_method_var.get()
+        params = {}
+        headers = {}
+        body = None
+        requester = ApiRequester()
+        response = requester.send_request(method, url, params, headers, body)
+        print(response["headers"])
+        self.response_tab.set_response(response['content'], response['status_code'], response['response_time'])
 
     def create_details_tab(self):
         details_tab = DetailsTab(self)
@@ -102,8 +109,8 @@ class RequestTab(ttk.Frame):
         self.rowconfigure(1, weight=1)
 
     def create_response_tab(self):
-        response_tab = ResponseTab(self)
-        response_tab.grid(row=2, column=0, columnspan=4, padx=5, pady=5, sticky='nsew')
+        self.response_tab = ResponseTab(self)
+        self.response_tab.grid(row=2, column=0, columnspan=4, padx=5, pady=5, sticky='nsew')
         self.rowconfigure(2, weight=0)
 
 
@@ -161,8 +168,14 @@ class ResponseTab(ttk.Frame):
         self.text_area.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
         self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
-        self.text_area.config(state=tk.DISABLED) 
         
-    def set_response(self, response):
+        
+    def set_response(self, response, status_code=None, time_taken=None):
+        self.text_area.config(state=tk.NORMAL)
         self.text_area.delete(1.0, tk.END)  
         self.text_area.insert(tk.END, response) 
+        self.text_area.config(state=tk.DISABLED) 
+        if status_code:
+            self.status_var.set(f"Status: {status_code}")
+        if time_taken:
+            self.time_var.set(f"Time taken: {time_taken} seconds")
