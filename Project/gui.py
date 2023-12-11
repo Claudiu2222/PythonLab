@@ -60,6 +60,7 @@ class RequestTab(ttk.Frame):
         self.grid_columnconfigure(1, weight=1)
     
     def create_widgets(self):
+
         self.current_method_var = tk.StringVar()
         http_methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
         method_combobox =  ttk.Combobox(self, textvariable=self.current_method_var, values=http_methods, state='readonly', width=10)
@@ -67,13 +68,13 @@ class RequestTab(ttk.Frame):
         method_combobox.current(0)
 
 
-        self.url_entry = ttk.Entry(self, font=('Helvetica', 14), width=60)
-        self.url_entry.grid(row=0, column=1, padx=5, pady=20)
+        self.url_entry = ttk.Entry(self, font=('Helvetica', 14), width=70)
+        self.url_entry.grid(row=0, column=1, padx=0, pady=20)
         self.placeholder_text = "Enter your URL here"
         self.set_placeholder()
 
         send_button = ttk.Button(self, text="Send", command=self.send_request, style='TButton')
-        send_button.grid(row=0, column=2, columnspan=2, padx=5, pady=5)
+        send_button.grid(row=0, column=2, padx=5, pady=5)
         
 
     def set_placeholder(self):
@@ -113,7 +114,7 @@ class DetailsTab(ttk.Frame):
 
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill='both', expand=True)
-  # Tabs
+        
         self.parameters_tab = self.create_tab("Parameters")
         self.headers_tab = self.create_tab("Headers")
         self.body_tab = self.create_tab("Body")
@@ -133,15 +134,34 @@ class ResponseTab(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        self.config(height=200)
+        self.config(height=250)
         self.create_widgets()
         
     def create_widgets(self):
         self.grid_propagate(False)
+
+        self.status_var = tk.StringVar(value="")
+        self.time_var = tk.StringVar(value="")
+
+        info_frame = ttk.Frame(self, height=25, style='TFrame')
+        info_frame.grid(row=0, column=0, sticky='ew', padx=5, pady=2)
+        info_frame.grid_propagate(False)
+        info_frame.columnconfigure(1, weight=1)
+
+        response_label = ttk.Label(info_frame, text="Response", font=('Helvetica', 10), foreground="white", background="#2D2D2D")
+        response_label.grid(row=0, column=0, sticky='w')
+
+        self.status_code_label = ttk.Label(info_frame, textvariable=self.status_var, font=('Helvetica', 10), foreground="white", background="#2D2D2D")
+        self.status_code_label.grid(row=0, column=1, sticky='e')
+
+        self.time_taken_label = ttk.Label(info_frame, textvariable=self.time_var, font=('Helvetica', 10), foreground="white", background="#2D2D2D")
+        self.time_taken_label.grid(row=0, column=2, sticky='e')
+
         self.text_area = ScrolledText(self, wrap=tk.WORD, font=('Consolas', 10), background="#2D2D2D", foreground="white")
-        self.text_area.grid(row=2, column=0, sticky='ew', padx=5, pady=5)
-        self.rowconfigure(2, weight=0)
+        self.text_area.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
+        self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
+        self.text_area.config(state=tk.DISABLED) 
         
     def set_response(self, response):
         self.text_area.delete(1.0, tk.END)  
