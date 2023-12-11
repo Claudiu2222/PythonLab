@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from tkinter.scrolledtext import ScrolledText
 
 class GuiApiClient(tk.Tk):
     def __init__(self):
@@ -24,7 +25,7 @@ class GuiApiClient(tk.Tk):
 
         style.configure('TNotebook', background='#2D2D2D', borderwidth=0)
         style.configure('TNotebook.Tab', background='#1a1a1a', foreground='white', lightcolor='#2D2D2D', darkcolor='#2D2D2D', borderwidth=0, padding=[20, 10])
-        style.map('TNotebook.Tab', background=[('selected', '#2D2D2D')],focuscolor=[('focus', '')])
+        style.map('TNotebook.Tab', background=[('selected', '#2D2D2D')],focuscolor=[('focus', '')],padding=[('', [20, 5])])
 
         style.map('TCombobox', fieldbackground=[('readonly', '#333333')])
         style.configure('TCombobox', background='#333333', foreground='white', borderwidth=0, fieldbackground='#333333') 
@@ -35,14 +36,13 @@ class GuiApiClient(tk.Tk):
  
         style.configure('TFrame', background='#2D2D2D')
 
-        # Style for buttons
+        
         style.configure('TButton', background='#5FBA7D', foreground='white', font=('Helvetica', 10, 'bold'), borderwidth=0)
         style.map('TButton',
                   background=[('active', '#58a069'), ('pressed', '#50b369')],
                   foreground=[('pressed', '#FFFFFF'), ('active', '#FFFFFF')],
                   focuscolor=[('focus', '')])
 
-        # Style for entries
         style.configure('TEntry', foreground='white', fieldbackground='#555555', borderwidth=0)
 
 
@@ -55,6 +55,9 @@ class RequestTab(ttk.Frame):
     
     def initialize_gui(self):
         self.create_widgets()
+        self.create_details_tab()
+        self.create_response_tab()
+        self.grid_columnconfigure(1, weight=1)
     
     def create_widgets(self):
         self.current_method_var = tk.StringVar()
@@ -71,10 +74,7 @@ class RequestTab(ttk.Frame):
 
         send_button = ttk.Button(self, text="Send", command=self.send_request, style='TButton')
         send_button.grid(row=0, column=2, columnspan=2, padx=5, pady=5)
-
-        self.parameters_frame = ttk.LabelFrame(self, text='Parameters', padding=(20, 10))
-        self.headers_frame = ttk.LabelFrame(self, text='Headers', padding=(20, 10))
-        self.body_frame = ttk.LabelFrame(self, text='Body', padding=(20, 10))
+        
 
     def set_placeholder(self):
         self.url_entry.insert(0, self.placeholder_text)
@@ -94,3 +94,55 @@ class RequestTab(ttk.Frame):
     def send_request(self):
         url = self.url_entry.get()
         print("Sending request...")
+
+    def create_details_tab(self):
+        details_tab = DetailsTab(self)
+        details_tab.grid(row=1, column=0, columnspan=4, padx=5, pady=5, sticky='nsew')
+        self.rowconfigure(1, weight=1)
+
+    def create_response_tab(self):
+        response_tab = ResponseTab(self)
+        response_tab.grid(row=2, column=0, columnspan=4, padx=5, pady=5, sticky='nsew')
+        self.rowconfigure(2, weight=0)
+
+
+class DetailsTab(ttk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(fill='both', expand=True)
+  # Tabs
+        self.parameters_tab = self.create_tab("Parameters")
+        self.headers_tab = self.create_tab("Headers")
+        self.body_tab = self.create_tab("Body")
+
+        self.notebook.add(self.parameters_tab, text='Parameters', padding=0)
+        self.notebook.add(self.headers_tab, text='Headers', padding=0)
+        self.notebook.add(self.body_tab, text='Body', padding=0)
+
+    def create_tab(self, text):
+        tab_frame = ttk.Frame(self.notebook)
+        add_button = ttk.Button(tab_frame, text=f"Add {text}")
+        add_button.pack()
+        return tab_frame
+    
+
+class ResponseTab(ttk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+        self.config(height=200)
+        self.create_widgets()
+        
+    def create_widgets(self):
+        self.grid_propagate(False)
+        self.text_area = ScrolledText(self, wrap=tk.WORD, font=('Consolas', 10), background="#2D2D2D", foreground="white")
+        self.text_area.grid(row=2, column=0, sticky='ew', padx=5, pady=5)
+        self.rowconfigure(2, weight=0)
+        self.columnconfigure(0, weight=1)
+        
+    def set_response(self, response):
+        self.text_area.delete(1.0, tk.END)  
+        self.text_area.insert(tk.END, response) 
