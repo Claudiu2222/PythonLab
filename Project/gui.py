@@ -2,56 +2,58 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 from httprequests import ApiRequester
+from historymanager import HistoryManager
 class GuiApiClient(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("API Client")
         self.geometry("1000x600")
         self.resizable(False, False)
+        self.history_manager = HistoryManager()
         self.initialize_gui()
         self.configure_styles()
     
+    def tab_change(self,event):
+        if self.tab.index('current') == 1:
+            self.history_tab.load_history()
+            
     def initialize_gui(self):
-        tab = ttk.Notebook(self)
-
-        request_tab = RequestTab(tab)
-        tab.add(request_tab, text="Request")
-
-        tab.pack(expand=1, fill="both")
+        self.tab = ttk.Notebook(self)
+        self.request_tab = RequestTab(self.tab,self.history_manager)
+        self.tab.add(self.request_tab, text="Request")
+        self.history_tab = HistoryTab(self.tab, self.history_manager, self.request_tab)
+        self.tab.add(self.history_tab, text="History")
+        self.tab.bind('<<NotebookTabChanged>>', self.tab_change)
+        self.tab.pack(expand=1, fill="both")
 
     def configure_styles(self):
         style = ttk.Style(self)
         style.theme_use('clam')
 
         style.configure('TNotebook', background='#2D2D2D', borderwidth=0)
-        style.configure('TNotebook.Tab', background='#1a1a1a', foreground='white', lightcolor='#2D2D2D', darkcolor='#2D2D2D', borderwidth=0, padding=[20, 10])
+        style.configure('TNotebook.Tab', background='#1a1a1a', foreground='white', lightcolor='#2D2D2D', darkcolor='#2D2D2D', padding=[20, 10])
         style.map('TNotebook.Tab', background=[('selected', '#2D2D2D')],focuscolor=[('focus', '')],padding=[('', [20, 5])])
-
-        style.map('TCombobox', fieldbackground=[('readonly', '#333333')])
+        style.map('TCombobox', fieldbackground=[('', '#333333')])
         style.configure('TCombobox', background='#333333', foreground='white', borderwidth=0, fieldbackground='#333333') 
         self.option_add('*TCombobox*Listbox*Background', '#333333')
         self.option_add('*TCombobox*Listbox*Foreground', 'white')
         self.option_add('*TCombobox*Listbox*selectBackground', '#5FBA7D')
         self.option_add('*TCombobox*Listbox*selectForeground', 'white')
- 
         style.configure('TFrame', background='#2D2D2D')
-
-        
-        style.configure('TButton', background='#5FBA7D', foreground='white', font=('Helvetica', 10, 'bold'), borderwidth=0)
+        style.configure('TButton', background='#5FBA7D', foreground='white', font=('Consolas', 10, 'bold'), borderwidth=0)
         style.map('TButton',
                   background=[('active', '#58a069'), ('pressed', '#50b369')],
                   foreground=[('pressed', '#FFFFFF'), ('active', '#FFFFFF')],
                   focuscolor=[('focus', '')])
-
         style.configure('TEntry', foreground='white', fieldbackground='#555555', borderwidth=0)
 
-
-
 class RequestTab(ttk.Frame):
-    def __init__(self, parent):
+    def __init__(self, parent, history_manager):
         super().__init__(parent)
         self.parent = parent
+        self.history_manager = history_manager
         self.initialize_gui()
+        
     
     def initialize_gui(self):
         self.create_widgets()
@@ -63,34 +65,38 @@ class RequestTab(ttk.Frame):
 
         self.current_method_var = tk.StringVar()
         http_methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
-        method_combobox =  ttk.Combobox(self, textvariable=self.current_method_var, values=http_methods, state='readonly', width=10)
-        method_combobox.grid(row=0, column=0, padx=5, pady=20)
-        method_combobox.current(0)
-
-
-        self.url_entry = ttk.Entry(self, font=('Helvetica', 14), width=70)
+        self.method_combobox =  ttk.Combobox(self, textvariable=self.current_method_var, values=http_methods, state='readonly', width=10,font=('Consolas', 12))
+        self.method_combobox.grid(row=0, column=0, padx=5, pady=20)
+        self.method_combobox.current(0)
+        
+        self.url_entry = ttk.Entry(self, font=('Consolas', 14), width=70)
         self.url_entry.grid(row=0, column=1, padx=0, pady=20)
         self.placeholder_text = "Enter your URL here"
-        self.set_placeholder()
+        self.initialize_placeholder()
 
         send_button = ttk.Button(self, text="Send", command=self.send_request, style='TButton')
         send_button.grid(row=0, column=2, padx=5, pady=5)
         
 
-    def set_placeholder(self):
+    def initialize_placeholder(self):
         self.url_entry.insert(0, self.placeholder_text)
         self.url_entry.bind('<FocusIn>', self.clear_placeholder)
-        self.url_entry.bind('<FocusOut>', self.add_placeholder)
+        self.url_entry.bind('<FocusOut>', self.set_placeholder)
 
     def clear_placeholder(self, event):
         if self.url_entry.get() == self.placeholder_text:
             self.url_entry.delete(0, tk.END)
     
-    def add_placeholder(self, event):
+    def set_placeholder(self, event):
         if self.url_entry.get() == '':
             self.url_entry.insert(0, self.placeholder_text)
 
-
+    def load_history_request(self, request):
+        self.details_tab.populate_details(request)
+        self.response_tab.set_response(request['content'], request['status'], request['response_time'])
+        self.url_entry.delete(0, tk.END)
+        self.url_entry.insert(0, request['url'])
+        self.method_combobox.current(self.method_combobox['values'].index(request['method']))
 
     def send_request(self):
         url = self.url_entry.get()
@@ -102,8 +108,10 @@ class RequestTab(ttk.Frame):
         response = requester.send_request(method, url, params, headers, body)
         if response is None:
             return
-        print(response["headers"])
+        #print(response["headers"])
+        request_to_save = { "method": method, "url": url, "status": response["status_code"], "response_time": response["response_time"], "content": response["content"], "params": params, "headers": headers, "body": body}
         self.response_tab.set_response(response['content'], response['status_code'], response['response_time'])
+        self.history_manager.append_request(request_to_save)
 
     def create_details_tab(self):
         self.details_tab = DetailsTab(self)
@@ -120,14 +128,11 @@ class DetailsTab(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill='both', expand=True)
-        
         self.parameters_frame = KeyValueEntry(self.notebook, "Parameter")
         self.headers_frame = KeyValueEntry(self.notebook, "Header")
         self.body_frame = ScrolledText(self.notebook, wrap=tk.WORD, font=('Consolas', 10), background="#2D2D2D", foreground="white")
-
         self.notebook.add(self.parameters_frame, text="Parameters")
         self.notebook.add(self.headers_frame, text="Headers")
         self.notebook.add(self.body_frame, text="Body")
@@ -138,16 +143,22 @@ class DetailsTab(ttk.Frame):
             'headers': self.headers_frame.get_key_value_pairs(),
             'body': self.body_frame.get(1.0, tk.END)
         }
+    def populate_details(self, request_data):
+        self.parameters_frame.populate_entries(request_data.get('params', {}))
+        self.headers_frame.populate_entries(request_data.get('headers', {}))
+        self.body_frame.delete(1.0, tk.END)
+        self.body_frame.insert(tk.END, request_data.get('body', ''))
+        
     
 class KeyValueEntry(ttk.Frame):
-    def __init__(self, parent, title, **kwargs):
-        super().__init__(parent, **kwargs)
+    def __init__(self, parent, title):
+        super().__init__(parent)
         self.title = title
         self.key_value_pairs = []
         self.setup_widgets()
 
     def setup_widgets(self):
-        self.listbox = tk.Listbox(self, height=5, selectmode="browser")
+        self.listbox = tk.Listbox(self, height=5, selectmode="browser",background="#2D2D2D", foreground="white",font=('Consolas', 10))
         self.listbox.pack(side="top", fill="both", expand=True)
         self.key_entry = ttk.Entry(self, width=20)
         self.key_entry.pack(side="left", padx=5, pady=5)
@@ -166,18 +177,23 @@ class KeyValueEntry(ttk.Frame):
             self.listbox.insert(tk.END, f"{key}: {value}")
             self.key_entry.delete(0, tk.END)
             self.value_entry.delete(0, tk.END)
+    
+    def populate_entries(self, entries):
+        self.listbox.delete(0, tk.END)
+        self.key_value_pairs = []
+        for key, value in entries.items():
+            self.key_value_pairs.append((key, value))
+            self.listbox.insert(tk.END, f"{key}: {value}")
         
 
     def remove_selected_pair(self):
-        try:
-            selected_index = self.listbox.curselection()
-            self.listbox.delete(selected_index)
-            #print(selected_index[0])
-            if selected_index[0] > len(self.key_value_pairs):
-                return
-            self.key_value_pairs.pop(selected_index[0])
-        except:
-            pass
+        selected_index = self.listbox.curselection()
+        #print(selected_index[0])
+        if len(selected_index) == 0:
+            return
+        self.listbox.delete(selected_index)
+        self.key_value_pairs.pop(selected_index[0])
+       
     def get_key_value_pairs(self):
         return dict(self.key_value_pairs)
     
@@ -187,29 +203,25 @@ class ResponseTab(ttk.Frame):
         self.parent = parent
         self.config(height=250)
         self.create_widgets()
+    
         
     def create_widgets(self):
         self.grid_propagate(False)
-
         self.status_var = tk.StringVar(value="")
         self.time_var = tk.StringVar(value="")
-
         info_frame = ttk.Frame(self, height=25, style='TFrame')
         info_frame.grid(row=0, column=0, sticky='ew', padx=5, pady=2)
         info_frame.grid_propagate(False)
         info_frame.columnconfigure(1, weight=1)
-
-        response_label = ttk.Label(info_frame, text="Response", font=('Helvetica', 10), foreground="white", background="#2D2D2D")
+        response_label = ttk.Label(info_frame, text="Response", font=('Consolas', 10), foreground="white", background="#2D2D2D")
         response_label.grid(row=0, column=0, sticky='w')
-
-        self.status_code_label = ttk.Label(info_frame, textvariable=self.status_var, font=('Helvetica', 10), foreground="white", background="#2D2D2D")
+        self.status_code_label = ttk.Label(info_frame, textvariable=self.status_var, font=('Consolas', 10), foreground="white", background="#2D2D2D")
         self.status_code_label.grid(row=0, column=1, sticky='e')
-
-        self.time_taken_label = ttk.Label(info_frame, textvariable=self.time_var, font=('Helvetica', 10), foreground="white", background="#2D2D2D")
+        self.time_taken_label = ttk.Label(info_frame, textvariable=self.time_var, font=('Consolas', 10), foreground="white", background="#2D2D2D")
         self.time_taken_label.grid(row=0, column=2, sticky='e')
-
         self.text_area = ScrolledText(self, wrap=tk.WORD, font=('Consolas', 10), background="#2D2D2D", foreground="white")
         self.text_area.grid(row=1, column=0, sticky='nsew', padx=5, pady=5)
+        self.text_area.config(state=tk.DISABLED) 
         self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
         
@@ -223,3 +235,51 @@ class ResponseTab(ttk.Frame):
             self.status_var.set(f"Status: {status_code}")
         if time_taken:
             self.time_var.set(f"Time taken: {time_taken} seconds")
+
+class HistoryTab(ttk.Frame):
+    def __init__(self, parent, history_manager, request_tab):
+        super().__init__(parent)
+        self.parent = parent
+        self.request_history = []
+        self.history_manager = history_manager
+        self.initialize_gui()
+        self.request_tab = request_tab
+        
+    
+    def initialize_gui(self):
+        self.create_widgets()
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+        
+    def create_widgets(self):
+        self.history_listbox = tk.Listbox(self, height=5, selectmode="browse", background="#2D2D2D", foreground="white", font=('Consolas', 10))
+        self.history_listbox.pack(side="top", fill="both", expand=True)
+        self.history_listbox.bind('<<ListboxSelect>>', self.on_select)
+        self.remove_button = ttk.Button(self, text="Clear History", command=self.clear_history)
+        self.remove_button.pack(side="bottom", pady=5)
+
+    def load_history(self):
+        self.request_history = self.history_manager.load_history()
+        if self.request_history is None:
+            self.request_history = []
+        self.update_listbox()
+    
+    def update_listbox(self):
+        self.history_listbox.delete(0, tk.END)
+        for request in self.request_history:
+            entry = f"{request['method']} {request['url']} - Status: {request['status']}"
+            self.history_listbox.insert(tk.END, entry)
+        
+    def on_select(self, event):   
+        index = self.history_listbox.curselection()
+        if len(index) == 0:
+            return
+        selected_request = self.request_history[index[0]]
+        self.request_tab.load_history_request(selected_request)
+        self.parent.select(0)
+        
+    def clear_history(self):
+        if self.history_manager.delete_history() is None:
+            return
+        self.request_history = []
+        self.update_listbox()
