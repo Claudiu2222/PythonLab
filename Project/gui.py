@@ -95,17 +95,19 @@ class RequestTab(ttk.Frame):
     def send_request(self):
         url = self.url_entry.get()
         method = self.current_method_var.get()
-        params = {}
-        headers = {}
-        body = None
+        params = self.details_tab.get_details()['params']
+        headers = self.details_tab.get_details()['headers']
+        body = self.details_tab.get_details()['body']
         requester = ApiRequester()
         response = requester.send_request(method, url, params, headers, body)
+        if response is None:
+            return
         print(response["headers"])
         self.response_tab.set_response(response['content'], response['status_code'], response['response_time'])
 
     def create_details_tab(self):
-        details_tab = DetailsTab(self)
-        details_tab.grid(row=1, column=0, columnspan=4, padx=5, pady=5, sticky='nsew')
+        self.details_tab = DetailsTab(self)
+        self.details_tab.grid(row=1, column=0, columnspan=4, padx=5, pady=5, sticky='nsew')
         self.rowconfigure(1, weight=1)
 
     def create_response_tab(self):
@@ -122,21 +124,63 @@ class DetailsTab(ttk.Frame):
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill='both', expand=True)
         
-        self.parameters_tab = self.create_tab("Parameters")
-        self.headers_tab = self.create_tab("Headers")
-        self.body_tab = self.create_tab("Body")
+        self.parameters_frame = KeyValueEntry(self.notebook, "Parameter")
+        self.headers_frame = KeyValueEntry(self.notebook, "Header")
+        self.body_frame = ScrolledText(self.notebook, wrap=tk.WORD, font=('Consolas', 10), background="#2D2D2D", foreground="white")
 
-        self.notebook.add(self.parameters_tab, text='Parameters', padding=0)
-        self.notebook.add(self.headers_tab, text='Headers', padding=0)
-        self.notebook.add(self.body_tab, text='Body', padding=0)
-
-    def create_tab(self, text):
-        tab_frame = ttk.Frame(self.notebook)
-        add_button = ttk.Button(tab_frame, text=f"Add {text}")
-        add_button.pack()
-        return tab_frame
+        self.notebook.add(self.parameters_frame, text="Parameters")
+        self.notebook.add(self.headers_frame, text="Headers")
+        self.notebook.add(self.body_frame, text="Body")
     
+    def get_details(self):
+        return {
+            'params': self.parameters_frame.get_key_value_pairs(),
+            'headers': self.headers_frame.get_key_value_pairs(),
+            'body': self.body_frame.get(1.0, tk.END)
+        }
+    
+class KeyValueEntry(ttk.Frame):
+    def __init__(self, parent, title, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.title = title
+        self.key_value_pairs = []
+        self.setup_widgets()
 
+    def setup_widgets(self):
+        self.listbox = tk.Listbox(self, height=5, selectmode="browser")
+        self.listbox.pack(side="top", fill="both", expand=True)
+        self.key_entry = ttk.Entry(self, width=20)
+        self.key_entry.pack(side="left", padx=5, pady=5)
+        self.value_entry = ttk.Entry(self, width=20)
+        self.value_entry.pack(side="left", padx=5, pady=5)
+        self.add_button = ttk.Button(self, text="Add", command=self.add_pair)
+        self.add_button.pack(side="left", padx=5, pady=5)
+        self.remove_button = ttk.Button(self, text="Remove", command=self.remove_selected_pair)
+        self.remove_button.pack(side="left", padx=5, pady=5)
+
+    def add_pair(self):
+        key = self.key_entry.get()
+        value = self.value_entry.get()
+        if key and value:
+            self.key_value_pairs.append((key, value))
+            self.listbox.insert(tk.END, f"{key}: {value}")
+            self.key_entry.delete(0, tk.END)
+            self.value_entry.delete(0, tk.END)
+        
+
+    def remove_selected_pair(self):
+        try:
+            selected_index = self.listbox.curselection()
+            self.listbox.delete(selected_index)
+            #print(selected_index[0])
+            if selected_index[0] > len(self.key_value_pairs):
+                return
+            self.key_value_pairs.pop(selected_index[0])
+        except:
+            pass
+    def get_key_value_pairs(self):
+        return dict(self.key_value_pairs)
+    
 class ResponseTab(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
