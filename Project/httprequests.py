@@ -5,9 +5,9 @@ class ApiRequester:
     def __init__(self):
         pass
 
-    def send_request(self, method, url, params=None, headers=None, body=None):
+    def send_request(self, method, url, headers=None, body=None):
         try:
-            response = requests.request(method, url, params=params, headers=headers, data=body)
+            response = requests.request(method, url, headers=headers, data=body)
             return {
                 'status_code': response.status_code,
                 'response_time': response.elapsed.total_seconds(),

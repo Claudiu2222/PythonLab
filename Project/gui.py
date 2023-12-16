@@ -3,6 +3,8 @@ from tkinter import ttk
 from tkinter.scrolledtext import ScrolledText
 from httprequests import ApiRequester
 from historymanager import HistoryManager
+import urllib.parse
+from urlmethods import encode_url, get_url_params,add_params_to_url
 class GuiApiClient(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -56,8 +58,8 @@ class RequestTab(ttk.Frame):
         
     
     def initialize_gui(self):
-        self.create_widgets()
         self.create_details_tab()
+        self.create_widgets()
         self.create_response_tab()
         self.grid_columnconfigure(1, weight=1)
     
@@ -69,27 +71,38 @@ class RequestTab(ttk.Frame):
         self.method_combobox.grid(row=0, column=0, padx=5, pady=20)
         self.method_combobox.current(0)
         
-        self.url_entry = ttk.Entry(self, font=('Consolas', 14), width=70)
+        
+        self.placeholder_text = tk.StringVar()
+        self.url_entry = ttk.Entry(self, font=('Consolas', 14), width=70,textvariable=self.placeholder_text)
         self.url_entry.grid(row=0, column=1, padx=0, pady=20)
-        self.placeholder_text = "Enter your URL here"
+        self.placeholder_text.trace('w', lambda x,y,z:self.extract_params_from_url())
         self.initialize_placeholder()
-
+        
         send_button = ttk.Button(self, text="Send", command=self.send_request, style='TButton')
         send_button.grid(row=0, column=2, padx=5, pady=5)
         
 
     def initialize_placeholder(self):
-        self.url_entry.insert(0, self.placeholder_text)
-        self.url_entry.bind('<FocusIn>', self.clear_placeholder)
-        self.url_entry.bind('<FocusOut>', self.set_placeholder)
+        self.url_entry.insert(0, "Enter URL")
+        self.url_entry.bind('<FocusIn>', self.set_focusin_placeholder)
+        self.url_entry.bind('<FocusOut>', self.set_focusout_placeholder)
 
-    def clear_placeholder(self, event):
-        if self.url_entry.get() == self.placeholder_text:
+    def set_focusin_placeholder(self, event):
+        if self.url_entry.get() == "Enter URL":
             self.url_entry.delete(0, tk.END)
     
-    def set_placeholder(self, event):
+    def set_focusout_placeholder(self, event):
         if self.url_entry.get() == '':
-            self.url_entry.insert(0, self.placeholder_text)
+            self.url_entry.insert(0, "Enter URL")
+        else:
+            encoded_url = encode_url(self.url_entry.get().rstrip(" "))
+            self.url_entry.delete(0, tk.END)
+            self.url_entry.insert(0, encoded_url)
+    
+    def extract_params_from_url(self):
+        self.details_tab.populate_details({'params': get_url_params(self.url_entry.get())})
+        
+        
 
     def load_history_request(self, request):
         self.details_tab.populate_details(request)
@@ -99,17 +112,16 @@ class RequestTab(ttk.Frame):
         self.method_combobox.current(self.method_combobox['values'].index(request['method']))
 
     def send_request(self):
-        url = self.url_entry.get()
+        url = self.url_entry.get().rstrip(" ")
         method = self.current_method_var.get()
-        params = self.details_tab.get_details()['params']
         headers = self.details_tab.get_details()['headers']
         body = self.details_tab.get_details()['body']
         requester = ApiRequester()
-        response = requester.send_request(method, url, params, headers, body)
+        response = requester.send_request(method, url, headers, body)
         if response is None:
             return
         #print(response["headers"])
-        request_to_save = { "method": method, "url": url, "status": response["status_code"], "response_time": response["response_time"], "content": response["content"], "params": params, "headers": headers, "body": body}
+        request_to_save = { "method": method, "url": url, "status": response["status_code"], "response_time": response["response_time"], "content": response["content"], "headers": headers, "body": body}
         self.response_tab.set_response(response['content'], response['status_code'], response['response_time'])
         self.history_manager.append_request(request_to_save)
 
@@ -130,8 +142,8 @@ class DetailsTab(ttk.Frame):
         self.parent = parent
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill='both', expand=True)
-        self.parameters_frame = KeyValueEntry(self.notebook, "Parameter")
-        self.headers_frame = KeyValueEntry(self.notebook, "Header")
+        self.parameters_frame = KeyValueEntry(self, "Parameter",is_param=True)
+        self.headers_frame = KeyValueEntry(self, "Header")
         self.body_frame = ScrolledText(self.notebook, wrap=tk.WORD, font=('Consolas', 10), background="#092635", foreground="white")
         self.notebook.add(self.parameters_frame, text="Parameters")
         self.notebook.add(self.headers_frame, text="Headers")
@@ -148,12 +160,19 @@ class DetailsTab(ttk.Frame):
         self.headers_frame.populate_entries(request_data.get('headers', {}))
         self.body_frame.delete(1.0, tk.END)
         self.body_frame.insert(tk.END, request_data.get('body', ''))
+    
+    def update_url_params(self, params):
+        url = self.parent.url_entry.get()
+        self.parent.url_entry.delete(0, tk.END)
+        self.parent.url_entry.insert(0, add_params_to_url(url, params))
         
     
 class KeyValueEntry(ttk.Frame):
-    def __init__(self, parent, title):
+    def __init__(self, parent, title, is_param=False):
         super().__init__(parent)
         self.title = title
+        self.parent =parent
+        self.is_param = is_param
         self.key_value_pairs = []
         self.setup_widgets()
 
@@ -177,6 +196,9 @@ class KeyValueEntry(ttk.Frame):
             self.listbox.insert(tk.END, f"{key}: {value}")
             self.key_entry.delete(0, tk.END)
             self.value_entry.delete(0, tk.END)
+        if self.is_param:
+            self.parent.update_url_params(self.get_key_value_pairs())
+    
     
     def populate_entries(self, entries):
         self.listbox.delete(0, tk.END)
@@ -188,11 +210,15 @@ class KeyValueEntry(ttk.Frame):
 
     def remove_selected_pair(self):
         selected_index = self.listbox.curselection()
-        #print(selected_index[0])
+        print(selected_index[0])
         if len(selected_index) == 0:
             return
-        self.listbox.delete(selected_index)
         self.key_value_pairs.pop(selected_index[0])
+        print(self.key_value_pairs)
+        self.listbox.delete(selected_index)
+        if self.is_param:
+           self.parent.update_url_params(self.get_key_value_pairs())
+        
        
     def get_key_value_pairs(self):
         return dict(self.key_value_pairs)
