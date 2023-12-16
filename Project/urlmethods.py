@@ -15,6 +15,7 @@ def encode_url_to_punycode(url):
 def encode_url_queries(url):
     parsed_url = urlparse(url)
     query_params = parse_qs(parsed_url.query)
+    #print(query_params)
     encoded_query = urlencode(query_params,doseq=True)
     return urlunparse(parsed_url._replace(query=encoded_query))
 

@@ -72,10 +72,10 @@ class RequestTab(ttk.Frame):
         self.method_combobox.current(0)
         
         
-        self.placeholder_text = tk.StringVar()
-        self.url_entry = ttk.Entry(self, font=('Consolas', 14), width=70,textvariable=self.placeholder_text)
+        self.input_text = tk.StringVar()
+        self.url_entry = ttk.Entry(self, font=('Consolas', 14), width=70,textvariable=self.input_text)
         self.url_entry.grid(row=0, column=1, padx=0, pady=20)
-        self.placeholder_text.trace('w', lambda x,y,z:self.extract_params_from_url())
+        self.input_text.trace_add('write', lambda x,y,z:self.extract_params_from_url())
         self.initialize_placeholder()
         
         send_button = ttk.Button(self, text="Send", command=self.send_request, style='TButton')
@@ -95,7 +95,7 @@ class RequestTab(ttk.Frame):
         if self.url_entry.get() == '':
             self.url_entry.insert(0, "Enter URL")
         else:
-            encoded_url = encode_url(self.url_entry.get().rstrip(" "))
+            encoded_url = encode_url(self.input_text.get().rstrip(" "))
             self.url_entry.delete(0, tk.END)
             self.url_entry.insert(0, encoded_url)
     
@@ -210,11 +210,9 @@ class KeyValueEntry(ttk.Frame):
 
     def remove_selected_pair(self):
         selected_index = self.listbox.curselection()
-        print(selected_index[0])
         if len(selected_index) == 0:
             return
         self.key_value_pairs.pop(selected_index[0])
-        print(self.key_value_pairs)
         self.listbox.delete(selected_index)
         if self.is_param:
            self.parent.update_url_params(self.get_key_value_pairs())
