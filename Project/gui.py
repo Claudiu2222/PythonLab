@@ -16,17 +16,17 @@ class GuiApiClient(tk.Tk):
         self.configure_styles()
     
     def tab_change(self,event):
-        if self.tab.index('current') == 1:
+        if self.notebook.index('current') == 1:
             self.history_tab.load_history()
             
     def initialize_gui(self):
-        self.tab = ttk.Notebook(self)
-        self.request_tab = RequestTab(self.tab,self.history_manager)
-        self.tab.add(self.request_tab, text="Request")
-        self.history_tab = HistoryTab(self.tab, self.history_manager, self.request_tab)
-        self.tab.add(self.history_tab, text="History")
-        self.tab.bind('<<NotebookTabChanged>>', self.tab_change)
-        self.tab.pack(expand=1, fill="both")
+        self.notebook = ttk.Notebook(self)
+        self.request_tab = RequestTab(self.notebook,self.history_manager)
+        self.notebook.add(self.request_tab, text="Request")
+        self.history_tab = HistoryTab(self.notebook, self.history_manager, self.request_tab)
+        self.notebook.add(self.history_tab, text="History")
+        self.notebook.bind('<<NotebookTabChanged>>', self.tab_change)
+        self.notebook.pack(expand=1, fill="both")
 
     def configure_styles(self):
         style = ttk.Style(self)
