@@ -16,24 +16,24 @@ class GuiApiClient(tk.Tk):
         self.configure_styles()
     
     def tab_change(self,event):
-        if self.notebook.index('current') == 1:
+        if self.tab.index('current') == 1:
             self.history_tab.load_history()
             
     def initialize_gui(self):
-        self.notebook = ttk.Notebook(self)
-        self.request_tab = RequestTab(self.notebook,self.history_manager)
-        self.notebook.add(self.request_tab, text="Request")
-        self.history_tab = HistoryTab(self.notebook, self.history_manager, self.request_tab)
-        self.notebook.add(self.history_tab, text="History")
-        self.notebook.bind('<<NotebookTabChanged>>', self.tab_change)
-        self.notebook.pack(expand=1, fill="both")
+        self.tab = ttk.Notebook(self)
+        self.request_tab = RequestTab(self.tab,self.history_manager)
+        self.tab.add(self.request_tab, text="Request")
+        self.history_tab = HistoryTab(self.tab, self.history_manager, self.request_tab)
+        self.tab.add(self.history_tab, text="History")
+        self.tab.bind('<<NotebookTabChanged>>', self.tab_change)
+        self.tab.pack(expand=1, fill="both")
 
     def configure_styles(self):
         style = ttk.Style(self)
         style.theme_use('clam')
 
-        style.configure('TNotebook', background='#092635', borderwidth=0)
-        style.configure('TNotebook.Tab', background='#1B4242', foreground='white', lightcolor='#092635', darkcolor='#092635', padding=[20, 10])
+        style.configure('TNotebook', background='#092635')
+        style.configure('TNotebook.Tab', background='#1B4242', foreground='white')
         style.map('TNotebook.Tab', background=[('selected', '#092635')],focuscolor=[('focus', '')],padding=[('', [20, 5])])
         style.map('TCombobox', fieldbackground=[('', '#1B4242')])
         style.configure('TCombobox', background='#1B4242', foreground='white', borderwidth=0, fieldbackground='#1B4242') 
