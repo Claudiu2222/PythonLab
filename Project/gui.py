@@ -54,6 +54,7 @@ class RequestTab(ttk.Frame):
         super().__init__(parent)
         self.parent = parent
         self.history_manager = history_manager
+        self.requester = ApiRequester()
         self.initialize_gui()
         
     
@@ -64,13 +65,11 @@ class RequestTab(ttk.Frame):
         self.grid_columnconfigure(1, weight=1)
     
     def create_widgets(self):
-
         self.current_method_var = tk.StringVar()
         http_methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
         self.method_combobox =  ttk.Combobox(self, textvariable=self.current_method_var, values=http_methods, state='readonly', width=10,font=('Consolas', 12))
         self.method_combobox.grid(row=0, column=0, padx=5, pady=20)
         self.method_combobox.current(0)
-        
         
         self.input_text = tk.StringVar()
         self.url_entry = ttk.Entry(self, font=('Consolas', 14), width=70,textvariable=self.input_text)
@@ -116,8 +115,7 @@ class RequestTab(ttk.Frame):
         method = self.current_method_var.get()
         headers = self.details_tab.get_details()['headers']
         body = self.details_tab.get_details()['body']
-        requester = ApiRequester()
-        response = requester.send_request(method, url, headers, body)
+        response = self.requester.send_request(method, url, headers, body)
         if response is None:
             return
         #print(response["headers"])
@@ -126,25 +124,25 @@ class RequestTab(ttk.Frame):
         self.history_manager.append_request(request_to_save)
 
     def create_details_tab(self):
-        self.details_tab = DetailsTab(self)
+        self.details_tab = DetailsFrame(self)
         self.details_tab.grid(row=1, column=0, columnspan=4, padx=5, pady=5, sticky='nsew')
         self.rowconfigure(1, weight=1)
 
     def create_response_tab(self):
-        self.response_tab = ResponseTab(self)
+        self.response_tab = ResponseFrame(self)
         self.response_tab.grid(row=2, column=0, columnspan=4, padx=5, pady=5, sticky='nsew')
         self.rowconfigure(2, weight=0)
 
 
-class DetailsTab(ttk.Frame):
+class DetailsFrame(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill='both', expand=True)
-        self.parameters_frame = KeyValueEntry(self, "Parameter",is_param=True)
-        self.headers_frame = KeyValueEntry(self, "Header")
-        self.body_frame = ScrolledText(self.notebook, wrap=tk.WORD, font=('Consolas', 10), background="#092635", foreground="white")
+        self.parameters_frame = KeyValueEntryFrame(self, "Parameter",is_param=True)
+        self.headers_frame = KeyValueEntryFrame(self, "Header")
+        self.body_frame = ScrolledText(self, wrap=tk.WORD, font=('Consolas', 10), background="#092635", foreground="white")
         self.notebook.add(self.parameters_frame, text="Parameters")
         self.notebook.add(self.headers_frame, text="Headers")
         self.notebook.add(self.body_frame, text="Body")
@@ -167,7 +165,7 @@ class DetailsTab(ttk.Frame):
         self.parent.url_entry.insert(0, add_params_to_url(url, params))
         
     
-class KeyValueEntry(ttk.Frame):
+class KeyValueEntryFrame(ttk.Frame):
     def __init__(self, parent, title, is_param=False):
         super().__init__(parent)
         self.title = title
@@ -221,7 +219,7 @@ class KeyValueEntry(ttk.Frame):
     def get_key_value_pairs(self):
         return dict(self.key_value_pairs)
     
-class ResponseTab(ttk.Frame):
+class ResponseFrame(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
