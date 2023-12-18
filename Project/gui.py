@@ -138,6 +138,9 @@ class DetailsFrame(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
+        self.create_widgets()
+        
+    def create_widgets(self):
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill='both', expand=True)
         self.parameters_frame = KeyValueEntryFrame(self, "Parameter",is_param=True)
@@ -146,13 +149,14 @@ class DetailsFrame(ttk.Frame):
         self.notebook.add(self.parameters_frame, text="Parameters")
         self.notebook.add(self.headers_frame, text="Headers")
         self.notebook.add(self.body_frame, text="Body")
-    
+        
     def get_details(self):
         return {
             'params': self.parameters_frame.get_key_value_pairs(),
             'headers': self.headers_frame.get_key_value_pairs(),
             'body': self.body_frame.get(1.0, tk.END)
         }
+        
     def populate_details(self, request_data):
         self.parameters_frame.populate_entries(request_data.get('params', {}))
         self.headers_frame.populate_entries(request_data.get('headers', {}))
@@ -172,9 +176,9 @@ class KeyValueEntryFrame(ttk.Frame):
         self.parent =parent
         self.is_param = is_param
         self.key_value_pairs = []
-        self.setup_widgets()
+        self.create_widgets()
 
-    def setup_widgets(self):
+    def create_widgets(self):
         self.listbox = tk.Listbox(self, height=5, selectmode="browser",background="#092635", foreground="white",font=('Consolas', 10))
         self.listbox.pack(side="top", fill="both", expand=True)
         self.key_entry = ttk.Entry(self, width=20)
